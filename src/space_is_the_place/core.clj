@@ -2,6 +2,7 @@
   (:require [quil.core :as q]
             [quil.middleware :as m]
             [overtone.studio.midi :refer [midi-connected-receivers]]
+            [space-is-the-place.grid :as grid]
             [overtone.midi :as overtone.midi]))
 
 (defn midi-receiver []
@@ -23,11 +24,14 @@
     {:x (inc x)
      :y y}))
 
+(defonce !image (atom nil))
+
 (defn setup []
   (q/frame-rate 30)
   (q/color-mode :rgb)
   (let [url "resources/4x4.png"
         img (q/load-image url)]
+    (reset! !image img)
     {:color      0
      :bg-color   -1
      :image      img
@@ -66,11 +70,19 @@
       (println "skipping"))
     state'))
 
+(defn send-to-grid! []
+  (let [buffer (map #(mod % 16) (range 128))]
+    (doall
+      (for [n (range 127)]
+        (grid/set-led (mod n 15) (q/floor (/ n 16)) (nth buffer n) #_(if (= -16777216 (aget (q/pixels @!image) n)) 15 0))))))
+
 (defn draw-state [{:keys [cursor] :as state}]
   (q/fill (:color state) 255 255)
   (let [img (q/state :image)]
     (when (q/loaded? img)
       (q/image img 0 0)))
+  (if (= (mod (q/frame-count) 60) 0)
+    (send-to-grid!))
   (q/ellipse (:x cursor) (:y cursor) 10 10))
 
 
